@@ -167,11 +167,12 @@ func (h *hashTable) search(key int) (int, bool) {
 	}
 
 	a0 := hashFunc(key) // первичный адрес
-	if h.Table[a0] == 0 {
+	switch h.Table[a0] {
+	case 0:
 		return -1, false
-	} else if h.Table[a0] == key {
+	case key:
 		return a0, true
-	} else {
+	default:
 		sqr := false
 		for i := 1; i < 20; i++ {
 			ai := (a0 + i*i) % t
@@ -199,6 +200,7 @@ func (h *hashTable) delete(key int) (int, bool) {
 	if found {
 		delete(h.Table, idx)
 		h.Table[idx] = 0
+		numElements--
 		return idx, true
 	} else {
 		return -1, false
@@ -221,7 +223,7 @@ func (h *hashTable) add(key int) (int, bool) {
 			totalSteps++
 			return a0, true
 		} else {
-			fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, a0, h.Table[a0])
+			// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, a0, h.Table[a0])
 			inserted := false
 			for i := 1; i < 20; i++ {
 				ai := (a0 + i*i) % t
@@ -232,12 +234,12 @@ func (h *hashTable) add(key int) (int, bool) {
 					numElements++
 					return ai, true
 				} else {
-					fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
+					// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
 				}
 			}
 
 			if !inserted {
-				fmt.Printf("Квадратичные пробы не помогли, линейная проба для ключа %v\n", key)
+				// fmt.Printf("Квадратичные пробы не помогли, линейная проба для ключа %v\n", key)
 				for j := 1; j <= t; j++ {
 					ai := (a0 + j) % t
 					if h.Table[ai] == 0 {
@@ -247,7 +249,7 @@ func (h *hashTable) add(key int) (int, bool) {
 						numElements++
 						return ai, true
 					} else {
-						fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
+						// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
 					}
 				}
 			}
@@ -276,6 +278,19 @@ func (h *hashTable) replace(delKey, addKey int) (int, bool) {
 
 	return addIndx, true
 }
+
+// func (h *hashTable) addGen(num int) (int, int) {
+// 	for num < 0 {
+// 		key := rand.Intn(10000-1000) + 1000
+// 		if idx, found := h.add(key); found {
+// 			continue
+// 		} else {
+// 			num--
+// 			return idx, key
+// 		}
+// 	}
+
+// }
 
 func main() {
 	myTable := hashTable{}
@@ -324,6 +339,28 @@ func userInput() (int, bool) {
 	return key, true
 }
 
+func userInputGen() (int, bool) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Введите количество генерируемых ключей: ")
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("Ошибка чтения:", err)
+		return 0, false
+	}
+	input = strings.TrimSpace(input)
+	num, err := strconv.Atoi(input)
+	if err != nil || num == 0 {
+		fmt.Println("Введите корректное значение")
+		return 0, false
+	}
+	avaiableNum := t - numElements
+	if num > avaiableNum {
+		fmt.Printf("Введенное количество элементов %d превышает свободный объем хеш-таблицы, будет добавлен возможный максимум: %d элементов\n", num, avaiableNum)
+		num = avaiableNum
+	}
+	return num, true
+}
+
 func handleChoice(choice int, h *hashTable) bool {
 	fmt.Println()
 
@@ -362,10 +399,6 @@ func handleChoice(choice int, h *hashTable) bool {
 			return true
 		}
 
-		if key == 0 {
-			key = rand.Intn(10000-1000) + 1000
-		}
-
 		idx, isAdded := h.add(key)
 		if idx != -1 && isAdded {
 			fmt.Printf("Элемент %d добавлен в индекс %d\n", key, idx)
@@ -397,10 +430,28 @@ func handleChoice(choice int, h *hashTable) bool {
 			fmt.Printf("Заменяемый элемент %d не найден", delKey)
 		}
 
-	case 5: // Выход
+	case 5: // сгенерировать элементы в хеш-таблице
+		num, valid := userInputGen()
+		if !valid {
+			return true
+		}
+
+		for num > 0 {
+			key := rand.Intn(10000-1000) + 1000
+			if idx, isAdded := h.add(key); idx != -1 && isAdded {
+				fmt.Printf("Элемент %d добавлен по индексу %d\n", key, idx)
+				num--
+			} else if idx != -1 && !isAdded {
+				continue
+			} else if idx == -1 && !isAdded {
+				fmt.Println("Вставка невозможна")
+			}
+		}
+
+	case 6: // Выход
 		return false
 	default:
-		fmt.Println("Введите число от 1 до 5")
+		fmt.Println("Введите число от 1 до 6")
 	}
 	h.printTable()
 	return true
@@ -411,9 +462,10 @@ func printMenu() {
 	fmt.Println("========== МЕНЮ ==========")
 	fmt.Println("1. Найти элемент в хеш-таблице")
 	fmt.Println("2. Удалить элемент в хеш-таблице")
-	fmt.Println("3. Добавить элемент в хеш-таблицу (0 - сгенерировать элемент)")
-	fmt.Println("4. Заменить элемент")
-	fmt.Println("5. Выход")
+	fmt.Println("3. Добавить элемент в хеш-таблицу")
+	fmt.Println("4. Заменить элемент в хеш-таблице")
+	fmt.Println("5. Добавить сгенерированные элементы в хеш-таблице")
+	fmt.Println("6. Выход")
 	fmt.Println("==========================")
 	fmt.Print("Ваш выбор: ")
 }
