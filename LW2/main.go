@@ -1,5 +1,10 @@
 package main
 
+/*
+Убрать логирование коллизий, добавить возможность добавлять выбираемое количество сгенерированных элементов,
+при замене всегда возвращать статус 2 ключей и их индексы.
+*/
+
 import (
 	"bufio"
 	"fmt"
@@ -162,7 +167,9 @@ func (h *hashTable) search(key int) (int, bool) {
 	}
 
 	a0 := hashFunc(key) // первичный адрес
-	if h.Table[a0] == key {
+	if h.Table[a0] == 0 {
+		return -1, false
+	} else if h.Table[a0] == key {
 		return a0, true
 	} else {
 		sqr := false
