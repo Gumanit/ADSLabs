@@ -287,22 +287,6 @@ func (h *hashTable) replace(delKey, addKey int) (int, int, bool) {
 	return delIndx, addIndx, true
 }
 
-// if !delFound && addFound {
-// 	return -1, addIndx, delFound, addFound
-// }
-
-// if delFound || !addFound {
-// 	return -1, -1, delFound, addFound
-// }
-
-// h.delete(delKey)
-// addIndx, added := h.add(addKey)
-// if !added {
-// 	return delIndx, -1, delFound, false
-// }
-
-// return delIndx, addIndx, true, false
-
 func main() {
 	myTable := hashTable{}
 	myTable.newHashTable(t)
