@@ -262,35 +262,46 @@ func (h *hashTable) add(key int) (int, bool) {
 	return -1, false
 }
 
-func (h *hashTable) replace(delKey, addKey int) (int, bool) {
-	if idx, found := h.search(addKey); found {
-		return idx, false
-	}
+func (h *hashTable) replace(delKey, addKey int) (int, int, bool) {
+	delIndx, delFound := h.search(delKey)
 
-	if _, delFound := h.delete(delKey); !delFound {
-		return -1, false
-	}
+	if delFound {
+		h.delete(delKey)
+		addIndx, addFound := h.search(addKey)
+		if addFound {
+			return delIndx, addIndx, false
+		}
 
-	addIndx, addFound := h.add(addKey)
-	if !addFound {
-		return -1, false
+	} else if !delFound {
+		addIndx, addFound := h.search(addKey)
+		if !addFound {
+			return -1, -1, false
+		} else if addFound {
+			return -1, addIndx, false
+		}
 	}
-
-	return addIndx, true
+	addIndx, added := h.add(addKey)
+	if !added {
+		return delIndx, -1, false
+	}
+	return delIndx, addIndx, true
 }
 
-// func (h *hashTable) addGen(num int) (int, int) {
-// 	for num < 0 {
-// 		key := rand.Intn(10000-1000) + 1000
-// 		if idx, found := h.add(key); found {
-// 			continue
-// 		} else {
-// 			num--
-// 			return idx, key
-// 		}
-// 	}
-
+// if !delFound && addFound {
+// 	return -1, addIndx, delFound, addFound
 // }
+
+// if delFound || !addFound {
+// 	return -1, -1, delFound, addFound
+// }
+
+// h.delete(delKey)
+// addIndx, added := h.add(addKey)
+// if !added {
+// 	return delIndx, -1, delFound, false
+// }
+
+// return delIndx, addIndx, true, false
 
 func main() {
 	myTable := hashTable{}
@@ -421,13 +432,21 @@ func handleChoice(choice int, h *hashTable) bool {
 			return true
 		}
 
-		idx, isReplased := h.replace(delKey, addKey)
-		if idx != -1 && isReplased {
-			fmt.Printf("Элемент %d удален, элемент %d добавлен в хеш-таблицу под индексом %d", delKey, addKey, idx)
-		} else if idx != -1 && !isReplased {
-			fmt.Printf("Элемент %d уже существует в хеш-таблице", addKey)
-		} else if idx == -1 && !isReplased {
-			fmt.Printf("Заменяемый элемент %d не найден", delKey)
+		delIdx, addIdx, repStatus := h.replace(delKey, addKey)
+		if delIdx == -1 {
+			fmt.Printf("Заменяемый элемент %d не найден\n", delKey)
+			if addIdx != -1 {
+				fmt.Printf("Добавляемый элемент %d уже существует в хеш-таблице под индексом %d", addKey, addIdx)
+			}
+		} else if delIdx != -1 {
+			fmt.Printf("Заменяемый элемент %d удален из индекса %d\n", delKey, delIdx)
+			if addIdx != -1 && !repStatus {
+				fmt.Printf("Добавляемый элемент %d уже существует в хеш-таблице под индексом %d", addKey, addIdx)
+			} else if addIdx != -1 && repStatus {
+				fmt.Printf("Добавляемый элемент %d внесен в хеш-таблицу под индексом %d", addKey, addIdx)
+			}
+		} else {
+			fmt.Printf("Добавляемый элемент %d не удалось внести в хеш-таблицу", addKey)
 		}
 
 	case 5: // сгенерировать элементы в хеш-таблице
