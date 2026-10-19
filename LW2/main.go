@@ -40,6 +40,8 @@ func (h *hashTable) printTable() { // функция для читаемого �
 				fmt.Print("       │")
 			} else if h.Table[i] == 0 {
 				fmt.Print("   —   │")
+			} else if h.Table[i] == -1 {
+				fmt.Print("   ×   │")   
 			} else {
 				fmt.Printf(" %5d │", h.Table[i])
 			}
@@ -118,7 +120,7 @@ func (h *hashTable) fill() {
 
 	for newKey := range h.Keys {
 		a0 := hashFunc(newKey) // первичный адрес
-		if h.Table[a0] == 0 {
+		if h.Table[a0] == 0 || h.Table[a0] == -1 {
 			h.Table[a0] = newKey
 			totalSteps++
 		} else {
@@ -126,7 +128,7 @@ func (h *hashTable) fill() {
 			inserted := false
 			for i := 1; i < 20; i++ {
 				ai := (a0 + i*i) % t
-				if h.Table[ai] == 0 {
+				if h.Table[ai] == 0 || h.Table[a0] == -1 {
 					h.Table[ai] = newKey
 					inserted = true
 					totalSteps += i + 1
@@ -140,7 +142,7 @@ func (h *hashTable) fill() {
 				// fmt.Printf("Квадратичные пробы не помогли, линейная проба для ключа %v\n", newKey)
 				for j := 1; j <= t; j++ {
 					ai := (a0 + j) % t
-					if h.Table[ai] == 0 {
+					if h.Table[ai] == 0 || h.Table[a0] == -1 {
 						h.Table[ai] = newKey
 						inserted = true
 						totalSteps += 20 + j
@@ -162,44 +164,49 @@ func (h *hashTable) fill() {
 }
 
 func (h *hashTable) search(key int) (int, bool) {
-	if key > 9999 || key < 1000 {
-		panic("Значение ключа не 4-х значное!")
-	}
+    if key > 9999 || key < 1000 {
+        panic("Значение ключа не 4-х значное!")
+    }
 
-	a0 := hashFunc(key) // первичный адрес
-	switch h.Table[a0] {
-	case 0:
-		return -1, false
-	case key:
-		return a0, true
-	default:
-		sqr := false
-		for i := 1; i < 20; i++ {
-			ai := (a0 + i*i) % t
-			if h.Table[ai] == key {
-				sqr = true
-				return ai, true
-			}
-		}
+    a0 := hashFunc(key)
 
-		if !sqr {
-			for j := 1; j <= t; j++ {
-				ai := (a0 + j) % t
-				if h.Table[ai] == key {
-					return ai, true
-				}
-			}
-		}
-	}
-	return -1, false
+    if h.Table[a0] == 0 {
+        return -1, false
+    }
+    if h.Table[a0] == key {
+        return a0, true
+    }
 
+    for i := 1; i < 20; i++ {
+        ai := (a0 + i*i) % t
+
+        if h.Table[ai] == 0 {
+            return -1, false
+        }
+        if h.Table[ai] == key {
+            return ai, true
+        }
+    }
+
+    for j := 1; j <= t; j++ {
+        ai := (a0 + j) % t
+
+        if h.Table[ai] == 0 {
+            return -1, false
+        }
+        if h.Table[ai] == key {
+            return ai, true
+        }
+    }
+
+    return -1, false
 }
 
 func (h *hashTable) delete(key int) (int, bool) {
 	idx, found := h.search(key)
 	if found {
 		delete(h.Table, idx)
-		h.Table[idx] = 0
+		h.Table[idx] = -1
 		numElements--
 		return idx, true
 	} else {
@@ -208,58 +215,52 @@ func (h *hashTable) delete(key int) (int, bool) {
 }
 
 func (h *hashTable) add(key int) (int, bool) {
-	if numElements == t {
-		fmt.Println("Хеш-таблица полностью заполнена, вставка новых элементов невозможна!")
-		return -1, false
-	}
-	idx, found := h.search(key)
-	if found {
-		return idx, false
-	} else {
-		a0 := hashFunc(key) // первичный адрес
-		if h.Table[a0] == 0 {
-			h.Table[a0] = key
-			numElements++
-			totalSteps++
-			return a0, true
-		} else {
-			// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, a0, h.Table[a0])
-			inserted := false
-			for i := 1; i < 20; i++ {
-				ai := (a0 + i*i) % t
-				if h.Table[ai] == 0 {
-					h.Table[ai] = key
-					inserted = true
-					totalSteps += i + 1
-					numElements++
-					return ai, true
-				} else {
-					// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
-				}
-			}
+    if numElements == t {
+        fmt.Println("Хеш-таблица полностью заполнена, вставка новых элементов невозможна!")
+        return -1, false
+    }
+    idx, found := h.search(key)
+    if found {
+        return idx, false
+    }
 
-			if !inserted {
-				// fmt.Printf("Квадратичные пробы не помогли, линейная проба для ключа %v\n", key)
-				for j := 1; j <= t; j++ {
-					ai := (a0 + j) % t
-					if h.Table[ai] == 0 {
-						h.Table[ai] = key
-						inserted = true
-						totalSteps += 20 + j
-						numElements++
-						return ai, true
-					} else {
-						// fmt.Printf("Коллизия - ключ %v, адрес %v занят ключом %v\n", key, ai, h.Table[ai])
-					}
-				}
-			}
+    a0 := hashFunc(key)
+    if h.Table[a0] == 0 || h.Table[a0] == -1 {
+        h.Table[a0] = key
+        numElements++
+        totalSteps++
+        return a0, true
+    }
 
-			if !inserted {
-				failed++
-			}
-		}
-	}
-	return -1, false
+    inserted := false
+    for i := 1; i < 20; i++ {
+        ai := (a0 + i*i) % t
+        if h.Table[ai] == 0 || h.Table[ai] == -1 {
+            h.Table[ai] = key
+            inserted = true
+            totalSteps += i + 1
+            numElements++
+            return ai, true
+        }
+    }
+
+    if !inserted {
+        for j := 1; j <= t; j++ {
+            ai := (a0 + j) % t
+            if h.Table[ai] == 0 || h.Table[ai] == -1 {
+                h.Table[ai] = key
+                inserted = true
+                totalSteps += 20 + j
+                numElements++
+                return ai, true
+            }
+        }
+    }
+
+    if !inserted {
+        failed++
+    }
+    return -1, false
 }
 
 func (h *hashTable) replace(delKey, addKey int) (int, int, bool) {
